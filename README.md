@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/nguyennguyenit-pancake-pos-mcp-badge.png)](https://mseep.ai/app/nguyennguyenit-pancake-pos-mcp)
+
 # Pancake POS MCP
 
 Model Context Protocol (MCP) server wrapping the Pancake POS REST API, enabling AI assistants like Claude to manage Vietnamese e-commerce POS operations with 24 specialized tools and 7 reference resources.
