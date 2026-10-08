@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  PANCAKE_POS_API_KEY: z.string().min(1, "PANCAKE_POS_API_KEY is required"),
-  PANCAKE_POS_SHOP_ID: z.string().min(1, "PANCAKE_POS_SHOP_ID is required"),
+  // Trim: a stray space/newline from copy-paste makes Pancake reject the key (403, error_code 105).
+  PANCAKE_POS_API_KEY: z.string().trim().min(1, "PANCAKE_POS_API_KEY is required"),
+  PANCAKE_POS_SHOP_ID: z.string().trim().min(1, "PANCAKE_POS_SHOP_ID is required"),
   PANCAKE_POS_BASE_URL: z
     .string()
     .url()
