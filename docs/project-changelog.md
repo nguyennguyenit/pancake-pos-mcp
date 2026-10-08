@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Auth error clarity + HTTP client attempt budget (2026-10-08)
+
+**Motivation:** Issue #2 — users saw `403` on both `pos.pages.fm` and `pos.pancake.vn` with an apparently correct key. Live probing showed Pancake returns `403 {"message":"api_key is invalid","error_code":105}` only when the key itself is rejected (a wrong shop ID yields `404`), and a trailing space/newline from copy-paste is enough to trigger it.
+
+**Changes:**
+- `src/config.ts`: `PANCAKE_POS_API_KEY` and `PANCAKE_POS_SHOP_ID` are trimmed.
+- `src/api-client/response-parser.ts`: `403` + `error_code 105` maps to `INVALID_API_KEY` with an actionable message; other `403`s stay `FORBIDDEN`. Duplicate non-OK handling merged into `toApiError`.
+- `src/api-client/pancake-http-client.ts`: `HttpClientOptions.maxRetries` renamed to `maxAttempts` (it always counted total attempts). Values `< 1` are clamped to 1 — previously `maxRetries: 0` skipped the request entirely and threw `NETWORK_ERROR ... undefined`. Defaults unchanged (Bun 3, Workers 2).
+
+**API Behavior:** `HttpClientOptions.maxRetries` → `maxAttempts` (internal option; `src/worker.ts` updated).
+
 ### Orders delete: display_id resolver + status pre-check (2026-05-09)
 
 **Scope:** Display ID resolver for `manage_orders action=delete` to enable human-readable order deletion + structured error codes + pre-check validation.

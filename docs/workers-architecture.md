@@ -60,8 +60,8 @@ interface HttpClientOptions {
   /** Fetch timeout in milliseconds (default: 30s, Workers: 8s) */
   fetchTimeoutMs?: number;
 
-  /** Max retry attempts (default: 3, Workers: 2) */
-  maxRetries?: number;
+  /** Total attempts incl. first call (default: 3, Workers: 2, min 1) */
+  maxAttempts?: number;
 
   /** Enable token-bucket rate limiter (default: true, Workers: false) */
   enableRateLimiter?: boolean;
@@ -72,7 +72,7 @@ interface HttpClientOptions {
 ```typescript
 new PancakeHttpClient(config, {
   fetchTimeoutMs: 8_000,      // Cloudflare timeout
-  maxRetries: 2,              // Reduced for stateless mode
+  maxAttempts: 2,             // Reduced for stateless mode
   enableRateLimiter: false,   // Disabled (no state across requests)
 })
 ```

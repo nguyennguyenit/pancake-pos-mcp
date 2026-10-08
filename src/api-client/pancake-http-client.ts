@@ -5,14 +5,14 @@ import { buildRequestUrl, redactUrl } from "./request-builder.js";
 import { parseResponse, parsePaginatedResponse } from "./response-parser.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
-const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_MAX_ATTEMPTS = 3;
 const RETRY_BASE_MS = 1000;
 
 export interface HttpClientOptions {
   /** Request timeout in ms. Default: 30_000 (Bun). Use 8_000 for Workers. */
   fetchTimeoutMs?: number;
-  /** Max retry attempts. Default: 3 (Bun). Use 2 for Workers. */
-  maxRetries?: number;
+  /** Total fetch attempts including the first call (values < 1 are treated as 1). Default: 3 (Bun). Use 2 for Workers. */
+  maxAttempts?: number;
   /** Enable token-bucket rate limiter. Default: true. Disable for Workers (stateless resets make it useless). */
   enableRateLimiter?: boolean;
 }
@@ -28,7 +28,7 @@ export class PancakeHttpClient {
 
   // Configurable per-deployment options
   private readonly fetchTimeoutMs: number;
-  private readonly maxRetries: number;
+  private readonly maxAttempts: number;
   private readonly enableRateLimiter: boolean;
 
   // Per-minute token bucket: 1000 tokens/min
@@ -48,7 +48,7 @@ export class PancakeHttpClient {
     this.apiKey = config.PANCAKE_POS_API_KEY;
     this.shopId = config.PANCAKE_POS_SHOP_ID;
     this.fetchTimeoutMs = options?.fetchTimeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+    this.maxAttempts = Math.max(1, options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
     this.enableRateLimiter = options?.enableRateLimiter ?? true;
   }
 
@@ -93,7 +93,7 @@ export class PancakeHttpClient {
   private async executeWithRetry(url: string, init: RequestInit): Promise<Response> {
     let lastError: Error | undefined;
 
-    for (let attempt = 0; attempt < this.maxRetries; attempt++) {
+    for (let attempt = 0; attempt < this.maxAttempts; attempt++) {
       await this.consumeToken();
 
       try {
@@ -105,7 +105,7 @@ export class PancakeHttpClient {
         // Retry on 5xx errors or 429 Too Many Requests
         const shouldRetry =
           (response.status >= 500 || response.status === 429) &&
-          attempt < this.maxRetries - 1;
+          attempt < this.maxAttempts - 1;
 
         if (shouldRetry) {
           let delay = RETRY_BASE_MS * Math.pow(2, attempt);
@@ -122,7 +122,7 @@ export class PancakeHttpClient {
           }
 
           console.error(
-            `[PancakeHTTP] ${response.status} on ${redactUrl(url)}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`,
+            `[PancakeHTTP] ${response.status} on ${redactUrl(url)}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.maxAttempts})`,
           );
           await sleep(delay);
           continue;
@@ -131,7 +131,7 @@ export class PancakeHttpClient {
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        if (attempt < this.maxRetries - 1) {
+        if (attempt < this.maxAttempts - 1) {
           const delay = RETRY_BASE_MS * Math.pow(2, attempt);
           console.error(
             `[PancakeHTTP] Network error on ${redactUrl(url)}, retrying in ${delay}ms: ${lastError.message}`,
@@ -143,7 +143,7 @@ export class PancakeHttpClient {
 
     throw new PancakeApiError(
       "NETWORK_ERROR",
-      `Failed after ${this.maxRetries} retries: ${lastError?.message}`,
+      `Failed after ${this.maxAttempts} attempts: ${lastError?.message}`,
       0,
     );
   }

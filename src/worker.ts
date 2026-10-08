@@ -54,10 +54,10 @@ function getClient(
 ): { config: PancakeConfig; client: PancakeHttpClient } {
   if (!cachedConfig || !cachedClient) {
     cachedConfig = loadConfig(env);
-    // Workers-optimized: 8s timeout, 2 retries, no rate limiter (stateless per-request)
+    // Workers-optimized: 8s timeout, 2 attempts, no rate limiter (stateless per-request)
     cachedClient = new PancakeHttpClient(cachedConfig, {
       fetchTimeoutMs: 8_000,
-      maxRetries: 2,
+      maxAttempts: 2,
       enableRateLimiter: false,
     });
   }

@@ -129,7 +129,7 @@ await this.consumeToken();
 ### 3. Exponential Backoff Retry (Configurable: 2-3 Attempts)
 Only retries on server errors (5xx status codes):
 ```typescript
-if (response.status >= 500 && attempt < maxRetries - 1) {
+if (response.status >= 500 && attempt < maxAttempts - 1) {
   const delay = RETRY_BASE_MS * Math.pow(2, attempt); // 1s → 2s → 4s
   await sleep(delay);
 }
@@ -147,21 +147,21 @@ The `HttpClientOptions` interface enables environment-specific tuning:
 ```typescript
 export interface HttpClientOptions {
   fetchTimeoutMs?: number;      // Fetch timeout (default: 30000ms)
-  maxRetries?: number;          // Retry attempts (default: 3)
+  maxAttempts?: number;         // Total attempts incl. first call (default: 3, min 1)
   enableRateLimiter?: boolean;  // Token bucket (default: true)
 }
 ```
 
 **Bun/HTTP Server Mode:**
 ```typescript
-new PancakeHttpClient(config)  // All defaults: 30s, 3 retries, rate limiting
+new PancakeHttpClient(config)  // All defaults: 30s, 3 attempts, rate limiting
 ```
 
 **Cloudflare Workers Mode:**
 ```typescript
 new PancakeHttpClient(config, {
   fetchTimeoutMs: 8_000,        // 8s (Cloudflare constraint)
-  maxRetries: 2,                // Reduced for timeout budget
+  maxAttempts: 2,               // Reduced for timeout budget
   enableRateLimiter: false,     // Per-request mode incompatible with stateful bucket
 })
 ```
